@@ -1,0 +1,85 @@
+---
+title: "Prediction Assignment Writeup - Practical Machine Learning"
+output:
+  html_document:
+    keep_md: yes
+  pdf_document: default
+  word_document: default
+---
+###Alexandre Gabriel
+
+First of all, we load the needed libraries and set a seed:
+
+```{r}
+library(caret)
+library(randomForest)
+set.seed(1406)
+```
+
+Then we set the training and test files:
+
+```{r}
+trainFile<-read.csv("pml-training.csv", header=T)
+testFile<-read.csv("pml-testing.csv", header=T)
+```
+
+The predictors are all not null (NA) variables which names are related to belt, forearm, arm, and dumbell. The 'classe' variable is put into the predictors set as well. 
+
+```{r}
+trainFileMissing <- sapply(trainFile, function (x) any(is.na(x) | x == ""))
+predictors0 <- !trainFileMissing & grepl("belt|arm|dumbbell|forearm", names(trainFileMissing))
+predictors <- c("classe",names(trainFileMissing)[predictors0])
+```
+
+
+The next step consists into clean the trainFile (considering only the set predictors as the valid variables for this analysis) and divide cleanTrain into the training and test sets. The test set will be used for cross validation.
+
+```{r}
+cleanTrain <- (trainFile[, predictors])
+cleanTrainDivided <- createDataPartition(cleanTrain$classe, p=0.70,list=F)
+training<-cleanTrain[cleanTrainDivided,] 
+test<-cleanTrain[-cleanTrainDivided,] 
+```
+
+
+Here we see the size and number of variables on each set:
+
+```{r}
+dim(training)
+```
+
+
+```{r}
+dim(test)
+```
+
+Now we define the variable randForest as the fitted predictor to the training set, predicting 'classe' based on all the other prediction variables. We used random forest as the approach to prediction because, according to the classes, it's accurate compared to other approaches.
+
+```{r}
+(randForest = randomForest(classe~., data=training, ntree = 100))
+plot(randForest)
+```
+
+In the plot above we can see a 100-sized tree reduces the error to a good level (< 2%).
+
+Below we conclude that the out-of-bag estimate of error rate is 0.62%:
+
+```{r}
+randForest
+```
+
+Finally, predicting the random forest in the test set (from the trainingFile) we get:
+
+```{r}
+prediction <- predict(randForest, test, type = "class")
+confusionMatrix(prediction, test$classe)
+```
+
+So the accuracy is 99.46%.
+
+As as appendix, the Course Project Prediction Quiz will be answered based on the set below: 
+
+```{r}
+predictionRF <- predict(randForest, testFile)
+predictionRF
+```
